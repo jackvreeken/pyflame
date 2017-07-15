@@ -228,7 +228,8 @@ if sys.version_info >= (3,3):
         assert not err
         assert proc.returncode == 0
 
-        # The output is decoded assuming UTF-8. So here we check if
+        # The output is decoded assuming UTF-8. So here we check if we can
+        # find our function names again.
         func_names = ["låtìÑ1", "snowman_☃", "meat_on_bone_🍖", "日本語はどうですか"]
         for f in func_names:
             assert x in out, "Could not find function '{}' in output".format(f)
