@@ -138,12 +138,12 @@ unsigned long StringSize(unsigned long addr) {
   return addr + offsetof(PyStringObject, ob_size);
 }
 
-std::string StringData(unsigned long addr) {
-  return PtracePeekString(pid, ByteData(addr));
-}
-
 unsigned long ByteData(unsigned long addr) {
   return addr + offsetof(PyStringObject, ob_sval);
+}
+
+std::string StringData(pid_t pid, unsigned long addr) {
+  return PtracePeekString(pid, ByteData(addr));
 }
 
 #elif PYFLAME_PY_VERSION == 34
