@@ -43,27 +43,8 @@ static_assert(sizeof(long) == sizeof(void *), "wat platform r u on");
 
 namespace pyflame {
 
-#if PYFLAME_PY_VERSION == 26
-namespace py26 {
-unsigned long StringSize(unsigned long addr) {
-  return addr + offsetof(PyStringObject, ob_size);
-}
-
-std::string StringData(unsigned long addr) {
-  return PtracePeekString(pid, ByteData(addr));
-}
-
-unsigned long ByteData(unsigned long addr) {
-  return addr + offsetof(PyStringObject, ob_sval);
-}
-
-#elif PYFLAME_PY_VERSION == 34
-namespace py34 {
-unsigned long StringSize(unsigned long addr) {
-  return addr + offsetof(PyVarObject, ob_size);
-}
-
-std::string StringData(pid_t pid, unsigned long addr) {
+#if PYFLAME_PY_VERSION >= 34
+std::string StringDataPython3(pid_t pid, unsigned long addr) {
   // TODO: This function only works for Python >= 3.3. Is it also possible to
   // support older versions of Python 3?
 
@@ -149,7 +130,29 @@ std::string StringData(pid_t pid, unsigned long addr) {
   }
 
   return dump.str();
+#endif
+
+#if PYFLAME_PY_VERSION == 26
+namespace py26 {
+unsigned long StringSize(unsigned long addr) {
+  return addr + offsetof(PyStringObject, ob_size);
 }
+
+std::string StringData(unsigned long addr) {
+  return PtracePeekString(pid, ByteData(addr));
+}
+
+unsigned long ByteData(unsigned long addr) {
+  return addr + offsetof(PyStringObject, ob_sval);
+}
+
+#elif PYFLAME_PY_VERSION == 34
+namespace py34 {
+unsigned long StringSize(unsigned long addr) {
+  return addr + offsetof(PyVarObject, ob_size);
+}
+
+std::string StringData(pid_t pid, unsigned long addr) { return StringDataPython3(pid, addr) };
 
 unsigned long ByteData(unsigned long addr) {
   return addr + offsetof(PyBytesObject, ob_sval);
@@ -161,10 +164,7 @@ unsigned long StringSize(unsigned long addr) {
   return addr + offsetof(PyVarObject, ob_size);
 }
 
-unsigned long StringData(unsigned long addr) {
-  // this works only if the filename is all ascii *fingers crossed*
-  return addr + sizeof(PyASCIIObject);
-}
+std::string StringData(pid_t pid, unsigned long addr) { return StringDataPython3(pid, addr) };
 
 unsigned long ByteData(unsigned long addr) {
   return addr + offsetof(PyBytesObject, ob_sval);
