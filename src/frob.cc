@@ -49,12 +49,13 @@ unsigned long StringSize(unsigned long addr) {
   return addr + offsetof(PyStringObject, ob_size);
 }
 
-unsigned long StringData(unsigned long addr) {
-  return addr + offsetof(PyStringObject, ob_sval);
+std::string StringData(unsigned long addr) {
+  return PtracePeekString(pid, ByteData(addr));
 }
 
-// should get inlined
-unsigned long ByteData(unsigned long addr) { return StringData(addr); }
+unsigned long ByteData(unsigned long addr) {
+  return addr + offsetof(PyStringObject, ob_sval);
+}
 
 #elif PYFLAME_PY_VERSION == 34
 namespace py34 {
@@ -62,8 +63,6 @@ unsigned long StringSize(unsigned long addr) {
   return addr + offsetof(PyVarObject, ob_size);
 }
 
-// TODO: StringData signature differs depending on Python version. It is better
-// to unify this.
 std::string StringData(pid_t pid, unsigned long addr) {
   // TODO: This function only works for Python >= 3.3. Is it also possible to
   // support older versions of Python 3?
@@ -221,21 +220,12 @@ size_t GetLine(pid_t pid, unsigned long frame, unsigned long f_code) {
 // approach is harder to mess up.
 void FollowFrame(pid_t pid, unsigned long frame, std::vector<Frame> *stack) {
   const long f_code = PtracePeek(pid, frame + offsetof(_frame, f_code));
-#if PYFLAME_PY_VERSION == 2
-  const long co_filename =
-      PtracePeek(pid, f_code + offsetof(PyCodeObject, co_filename));
-  const std::string filename = PtracePeekString(pid, StringData(co_filename));
-  const long co_name =
-      PtracePeek(pid, f_code + offsetof(PyCodeObject, co_name));
-  const std::string name = PtracePeekString(pid, StringData(co_name));
-#elif PYFLAME_PY_VERSION == 3
   const long co_filename =
       PtracePeek(pid, f_code + offsetof(PyCodeObject, co_filename));
   const std::string filename = StringData(pid, co_filename);
   const long co_name =
       PtracePeek(pid, f_code + offsetof(PyCodeObject, co_name));
   const std::string name = StringData(pid, co_name);
-#endif
 
   stack->push_back({filename, name, GetLine(pid, frame, f_code)});
 
