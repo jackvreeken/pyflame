@@ -63,6 +63,11 @@ def sleeper():
     with python_proc('sleeper.py') as p:
         yield p
 
+if sys.version_info >= (3,3):
+    @pytest.yield_fixture
+    def unicode_sleeper():
+        with python_proc('sleeper_ユニコード.py') as p:
+            yield p
 
 @pytest.yield_fixture
 def threaded_sleeper():
@@ -210,6 +215,28 @@ def test_exclude_idle(sleeper):
     assert lines.pop(-1) == ''  # output should end in a newline
     for line in lines:
         assert_flamegraph(line)
+
+
+if sys.version_info >= (3,3):
+    def test_utf8_output(unicode_sleeper):
+        proc = subprocess.Popen(
+            ['./src/pyflame', '-x', str(unicode_sleeper.pid)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True)
+        out, err = communicate(proc)
+        assert not err
+        assert proc.returncode == 0
+
+        # The output is decoded assuming UTF-8. So here we check if
+        func_names = ["låtìÑ1", "snowman_☃", "meat_on_bone_🍖", "日本語はどうですか"]
+        for f in func_names:
+            assert x in out, "Could not find function '{}' in output".format(f)
+
+        lines = out.split('\n')
+        assert lines.pop(-1) == ''  # output should end in a newline
+        for line in lines:
+            assert_flamegraph(line)
 
 
 def test_exit_early(exit_early):
